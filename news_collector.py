@@ -1,8 +1,8 @@
 """
 News collector module for fetching stock news from free sources.
+Uses direct RSS parsing without feedparser dependency.
 """
 
-import feedparser
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -47,64 +47,67 @@ class NewsCollector:
 
         return unique_news[:limit]
 
-    def _fetch_yahoo_finance_rss(self, ticker: str) -> list[dict]:
-        """Fetch news from Yahoo Finance RSS feed."""
+    def _parse_rss_feed(self, url: str, source: str) -> list[dict]:
+        """Parse an RSS feed URL and return news items."""
         news_items = []
-        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
 
         try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries:
-                news_items.append(self._parse_feed_entry(entry, 'Yahoo Finance'))
+            response = self.session.get(url, timeout=10)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.content, 'lxml-xml')
+
+            # Find all items in the RSS feed
+            items = soup.find_all('item')
+
+            for item in items:
+                title_elem = item.find('title')
+                link_elem = item.find('link')
+                desc_elem = item.find('description')
+                pub_date_elem = item.find('pubDate')
+
+                title = title_elem.get_text(strip=True) if title_elem else 'No title'
+                link = link_elem.get_text(strip=True) if link_elem else ''
+                description = desc_elem.get_text(strip=True) if desc_elem else ''
+                pub_date_str = pub_date_elem.get_text(strip=True) if pub_date_elem else ''
+
+                # Parse publication date
+                published_date = None
+                if pub_date_str:
+                    try:
+                        published_date = date_parser.parse(pub_date_str)
+                    except (ValueError, TypeError):
+                        pass
+
+                # Clean up description
+                description = self._clean_html(description)
+                if len(description) > 300:
+                    description = description[:297] + '...'
+
+                news_items.append({
+                    'title': html.unescape(title),
+                    'url': link,
+                    'description': description,
+                    'source': source,
+                    'published_date': published_date,
+                    'published_str': self._format_date(published_date)
+                })
+
         except Exception as e:
-            print(f"Error fetching Yahoo Finance RSS: {e}")
+            print(f"Error fetching RSS from {source}: {e}")
 
         return news_items
+
+    def _fetch_yahoo_finance_rss(self, ticker: str) -> list[dict]:
+        """Fetch news from Yahoo Finance RSS feed."""
+        url = f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={ticker}&region=US&lang=en-US"
+        return self._parse_rss_feed(url, 'Yahoo Finance')
 
     def _fetch_google_news_rss(self, ticker: str) -> list[dict]:
         """Fetch news from Google News RSS feed."""
-        news_items = []
         query = f"{ticker} stock"
         url = f"https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en"
-
-        try:
-            feed = feedparser.parse(url)
-            for entry in feed.entries:
-                news_items.append(self._parse_feed_entry(entry, 'Google News'))
-        except Exception as e:
-            print(f"Error fetching Google News RSS: {e}")
-
-        return news_items
-
-    def _parse_feed_entry(self, entry: dict, source: str) -> dict:
-        """Parse a feed entry into a standardized news item."""
-        # Parse publication date
-        published_date = None
-        if hasattr(entry, 'published'):
-            try:
-                published_date = date_parser.parse(entry.published)
-            except (ValueError, TypeError):
-                pass
-
-        # Clean up description/summary
-        description = ''
-        if hasattr(entry, 'summary'):
-            description = self._clean_html(entry.summary)
-        elif hasattr(entry, 'description'):
-            description = self._clean_html(entry.description)
-
-        # Truncate description
-        if len(description) > 300:
-            description = description[:297] + '...'
-
-        return {
-            'title': html.unescape(entry.get('title', 'No title')),
-            'url': entry.get('link', ''),
-            'description': description,
-            'source': source,
-            'published_date': published_date,
-            'published_str': self._format_date(published_date)
-        }
+        return self._parse_rss_feed(url, 'Google News')
 
     def _clean_html(self, text: str) -> str:
         """Remove HTML tags and clean up text."""
