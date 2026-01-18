@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock News Collector</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Stock News Collector</h1>
+            <p class="subtitle">Get the latest news for any stock ticker</p>
+        </header>
+
+        <div class="search-section">
+            <form id="search-form" class="search-form">
+                <input
+                    type="text"
+                    id="ticker-input"
+                    placeholder="Enter ticker symbol (e.g., AAPL)"
+                    maxlength="10"
+                    autocomplete="off"
+                    autofocus
+                >
+                <button type="submit" id="search-btn">
+                    <span class="btn-text">Search</span>
+                    <span class="btn-loading" hidden>Loading...</span>
+                </button>
+            </form>
+            <div class="quick-tickers">
+                <span>Popular:</span>
+                <button class="ticker-btn" data-ticker="AAPL">AAPL</button>
+                <button class="ticker-btn" data-ticker="GOOGL">GOOGL</button>
+                <button class="ticker-btn" data-ticker="MSFT">MSFT</button>
+                <button class="ticker-btn" data-ticker="TSLA">TSLA</button>
+                <button class="ticker-btn" data-ticker="NVDA">NVDA</button>
+                <button class="ticker-btn" data-ticker="AMZN">AMZN</button>
+            </div>
+        </div>
+
+        <div id="error-message" class="error-message" hidden></div>
+
+        <div id="stock-info" class="stock-info" hidden>
+            <h2 id="stock-name"></h2>
+            <span id="stock-ticker" class="ticker-badge"></span>
+            <span id="news-count" class="news-count"></span>
+        </div>
+
+        <div id="news-container" class="news-container">
+            <div id="news-list" class="news-list"></div>
+            <div id="no-news" class="no-news" hidden>
+                <p>No news found for this ticker. Try another symbol.</p>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" hidden>
+            <div class="spinner"></div>
+            <p>Fetching news...</p>
+        </div>
+    </div>
+
+    <footer>
+        <p>News sourced from Yahoo Finance and Google News RSS feeds</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
